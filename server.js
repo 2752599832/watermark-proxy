@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
 const cheerio = require('cheerio');
 
 const app = express();
@@ -31,7 +30,6 @@ app.get('/api/video', async (req, res) => {
   try {
     // 尝试多个解析方法
     const methods = [
-      parseLiuMingye,
       parseDouyinDirect,
       parseKuaishouDirect
     ];
@@ -64,46 +62,8 @@ app.get('/api/video', async (req, res) => {
   }
 });
 
-// 方法1: LiuMingye 解析
-async function parseLiuMingye(url) {
-  const apiUrl = `https://tool.liumingye.cn/video/?url=${encodeURIComponent(url)}`;
-
-  const response = await fetch(apiUrl, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-  });
-
-  const html = await response.text();
-  const $ = cheerio.load(html);
-
-  // 尝试多个可能的视频URL位置
-  let videoUrl = $('video').attr('src');
-  if (!videoUrl) {
-    videoUrl = $('video source').attr('src');
-  }
-  if (!videoUrl) {
-    videoUrl = $('#video-player video').attr('src');
-  }
-  if (!videoUrl) {
-    const match = html.match(/data-url=["']([^"']+)["']/);
-    videoUrl = match ? match[1] : null;
-  }
-
-  if (videoUrl) {
-    return {
-      success: true,
-      url: videoUrl,
-      api: 'LiuMingye'
-    };
-  }
-
-  throw new Error('未找到视频链接');
-}
-
 // 方法3: 抖音直链解析
 async function parseDouyinDirect(url) {
-  // 提取视频ID
   const idMatch = url.match(/\/video\/(\w+)/);
   if (!idMatch) {
     throw new Error('无法提取抖音视频ID');
@@ -111,7 +71,6 @@ async function parseDouyinDirect(url) {
 
   const videoId = idMatch[1];
 
-  // 访问抖音页面获取真实链接
   const response = await fetch(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15'
@@ -119,7 +78,6 @@ async function parseDouyinDirect(url) {
     redirect: 'manual'
   });
 
-  // 从响应头或重定向URL中提取
   const location = response.headers.get('location');
   if (location) {
     return {
@@ -153,15 +111,5 @@ async function parseKuaishouDirect(url) {
   throw new Error('无法获取快手直链');
 }
 
-// 启动服务器
-app.listen(PORT, () => {
-  console.log('='.repeat(50));
-  console.log('🚀 去水印代理服务器已启动');
-  console.log('='.repeat(50));
-  console.log(`📡 监听端口: ${PORT}`);
-  console.log(`🔗 API地址: http://localhost:${PORT}/api/video?url=视频链接`);
-  console.log('='.repeat(50));
-  console.log('\n✨ 免费使用，无需付费！\n');
-});
-
+// 导出 Express app（Vercel 需要）
 module.exports = app;
