@@ -1,3 +1,3 @@
 module.exports = function handler(req, res) {
-  res.json({ status: 'ok', timestamp: Date.now() });
+  res.status(200).json({ status: 'ok', timestamp: Date.now() });
 };
